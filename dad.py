@@ -81,7 +81,7 @@ class desk:
         pos_ = int(9 * (pos[1] - 1) + pos[0] - 1)
         new_pos = self.translate[pos_]
 
-        if self.fields[new_pos[0]][new_pos[1]] != None:
+        if self.fields[new_pos[0]][new_pos[1]] is not None:
             return
 
         self.draw_fig(True, pos)
@@ -251,7 +251,7 @@ Desk = desk(layer, screen_size, 50,  player)
 done = False
 
 while not done:
-
+    pygame.time.Clock().tick(10)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             done = True
