@@ -2,21 +2,49 @@ import pygame
 import random
 
 
-class button:
-    def __init__(self, surface,  position=(0, 0), size=(50, 20), text='Введите текст', color='white'):
+class menu:
+    def __init__(self, surface, wide, screen_s: int, ind, buttons):
+
         self.parent = surface
-        self.surface = pygame.Surface(size)
-        self.font = pygame.font.Font(None, 24)
-        self.text = self.font.render(text, True, (0, 0, 0))
-        self.text_rect = self.text.get_rect(center=(size[0] / 2, size[1] / 2))
-        self.button_rect = pygame.Rect(125, 125, 150, 50)
-        self.color = color
-        self.position = position
-        self.size = size
+        self.size = screen_s
+        self.surface = pygame.Surface([self.size] * 2)
+        self.buttons = buttons
+        self.indent = ind
 
     def draw(self):
-        pygame.draw.rect(self.surface, self.color, self.position + self.size)
-        self.surface.blit(self.text, self.text_rect)
+        indent_y = self.indent
+        for i in range(len(buttons)):
+            position = ((self.size - self.buttons[i].get_size()[0]) // 2, indent_y)
+            self.buttons[i].set_position(position)
+            self.buttons[i].draw()
+            indent_y += self.buttons[i].get_size()[1] * 1.5
+
+
+class button:
+    def __init__(self, surface, active=True, position=(0, 0), text='Введите текст', color='white'):
+        font = pygame.font.Font(None, 70)
+        self.text = font.render(text, True, color, 'purple')
+        self.text_rect = self.text.get_rect()
+        self.text_rect.move_ip(position)
+        self.surface = surface
+
+    def draw(self):
+        pygame.draw.rect(screen, 'white', (self.text_rect.x, self.text_rect.y) + self.text_rect.size)
+        self.surface.blit(self.text, (self.text_rect.x, self.text_rect.y))
+
+    def on_button_down(self, position):
+        if self.text_rect.collidepoint(position):
+            return True
+        return False
+
+    def set_position(self, position):
+        self.text_rect.move_ip(position)
+
+    def centre(self):
+        return self.text_rect.size[0] / 2
+
+    def get_size(self):
+        return self.text_rect.size
 
 
 class desk:
@@ -255,7 +283,7 @@ class desk:
             pygame.draw.line(self.surface, color, (self.line32, self.line2 + self.indent * 0.3),
                              (self.line32, self.screen_size - self.indent * 1.3), 3)
 
-    def draw_(self, color='grey', sub_color=(100, 100, 100)):
+    def draw(self, color='grey', sub_color=(100, 100, 100)):
         self.draw_big_field(color)
         for i in range(9):
             self.draw_small_field(sub_color, i)
@@ -266,23 +294,41 @@ if __name__ == '__main__':
 
     screen_size = 600
     screen = pygame.display.set_mode((screen_size, screen_size))
+    indent = 50
 
     layer = pygame.Surface((screen_size, screen_size), pygame.SRCALPHA)
 
     player = "Потом"
+    buttons = [button(screen, True, text='Зарегистрироваться'),
+               button(screen, True, text='Начать игру'),
+               ]
 
-    Desk = desk(layer, screen_size, 50,  player)
+    Desk = desk(layer, screen_size, indent,  player)
+    Menu = menu(screen, 100, screen_size, indent, buttons)
+
+    condition = 'menu'
 
     done = False
-    Desk.draw_('grey', (100, 100, 100))
+    # Desk.draw('grey', (100, 100, 100))
+    Menu.draw()
+
+
+
     while not done:
         pygame.time.Clock().tick(30)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 done = True
+            if condition == 'game':
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    Desk.set_fig(pygame.mouse.get_pos())
+            elif condition == 'menu':
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    for i in Menu.buttons:
+                        if i.on_button_down(event.pos):
+                            print('a')
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                Desk.set_fig(pygame.mouse.get_pos())
+
 
         screen.blit(layer, (0, 0))
         pygame.display.flip()
