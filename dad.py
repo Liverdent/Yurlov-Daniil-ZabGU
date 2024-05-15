@@ -108,10 +108,11 @@ class desk:
 
         pos_ = int(9 * (pos[1] - 1) + pos[0] - 1)
         new_pos = self.translate[pos_]
-        if ((self.fields[new_pos[0]][new_pos[1]] or self.field[new_pos[0]]) is not None
+        if ((self.fields[new_pos[0]][new_pos[1]] is not None) or (self.field[new_pos[0]] is not None)
                 and (new_pos[0] != self.cur_field and new_pos[0] is not None)):
             return
         if new_pos[0] == self.cur_field or self.cur_field is None:
+            print('changed')
             self.draw_fig(True, pos)
             self.fields[new_pos[0]][new_pos[1]] = self.cur_player
             self.cur_field = new_pos
@@ -306,11 +307,11 @@ if __name__ == '__main__':
     Desk = desk(layer, screen_size, indent,  player)
     Menu = menu(screen, 100, screen_size, indent, buttons)
 
-    condition = 'menu'
+    condition = 'game'
 
     done = False
-    # Desk.draw('grey', (100, 100, 100))
-    Menu.draw()
+    Desk.draw('grey', (100, 100, 100))
+    #Menu.draw()
 
 
 
