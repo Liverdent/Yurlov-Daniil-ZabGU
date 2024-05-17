@@ -1,36 +1,107 @@
 import pygame
 import random
+import sqlite3
+
+
+class texter:
+    def __init__(self, surface, text, active=True, ind=100, color='white'):
+        self.font = pygame.font.Font(None, 70)
+        self.text = text
+        self.text_obj = self.font.render(self.text, True, color, (40, 40, 40))
+        self.text_rect = self.text_obj.get_rect()
+        self.position = [ind] * 2
+        self.text_rect.move_ip(self.position)
+        self.color = color
+        self.surface = surface
+        self.active = active
+
+    def draw(self):
+        self.text_obj = self.font.render(self.text, True, self.color, (80, 80, 80))
+        text_rect = self.text_obj.get_rect()
+        text_rect.move_ip(self.position)
+        pygame.draw.rect(screen, 'white', (text_rect.x, text_rect.y) + text_rect.size)
+        self.surface.blit(self.text_obj, (text_rect.x, text_rect.y))
+
+    def is_active(self):
+        return self.active
+
+    def set_active(self, event_pos, active):
+        if self.text_rect.collidepoint(event_pos):
+            self.active = active
+
+    def input_text(self, key):
+        if key == pygame.K_RETURN:
+            self.text = ''
+        elif event.key == pygame.K_BACKSPACE:
+            self.text = self.text[:-1]
+        else:
+            self.text += event.unicode
+        self.surface.fill('black')
+        self.draw()
+
+    def on_button_down(self, position):
+        if self.text_rect.collidepoint(position):
+            return True
+        return False
+
+    def get_size(self):
+        return self.text_rect.size
+
+    def set_position(self, position):
+        self.text_rect.move_ip(position)
 
 
 class menu:
-    def __init__(self, surface, wide, screen_s: int, ind, buttons):
-
+    def __init__(self, surface, screen_s: int, ind, but):
         self.parent = surface
         self.size = screen_s
         self.surface = pygame.Surface([self.size] * 2)
-        self.buttons = buttons
+        self.buttons = but
         self.indent = ind
+        self.counter = 0
 
     def draw(self):
         indent_y = self.indent
-        for i in range(len(buttons)):
-            position = ((self.size - self.buttons[i].get_size()[0]) // 2, indent_y)
-            self.buttons[i].set_position(position)
-            self.buttons[i].draw()
-            indent_y += self.buttons[i].get_size()[1] * 1.5
+        for but in range(len(self.buttons)):
+            if self.counter == 0:
+                position = ((self.size - self.buttons[but].get_size()[0]) // 2, indent_y)
+                self.buttons[but].set_position(position)
+                self.buttons[but].draw()
+                indent_y += self.buttons[but].get_size()[1] * 1.5
+            else:
+                self.buttons[but].draw()
+        self.counter += 1
+
+
+class register:
+    def __init__(self, surface, screen_s, ind, blank):
+        self.blanks = blank
+        self.indent = ind
+        self.counter = 0
+        self.size = screen_s
+
+    def draw(self):
+        for i in self.blanks:
+            i.draw()
 
 
 class button:
-    def __init__(self, surface, active=True, position=(0, 0), text='Введите текст', color='white'):
-        font = pygame.font.Font(None, 70)
-        self.text = font.render(text, True, color, 'purple')
-        self.text_rect = self.text.get_rect()
+    def __init__(self, surface, active=True, position=(0, 0), text='Введите текст', color='white', mode=0):
+        self.font = pygame.font.Font(None, 70)
+        self.text = text
+        self.text_obj = self.font.render(text, True, color, 'purple')
+        self.text_rect = self.text_obj.get_rect()
         self.text_rect.move_ip(position)
+        self.color = color
         self.surface = surface
+        self.mode = mode
+        self.modes = ['menu', 'register', 'game']
 
-    def draw(self):
-        pygame.draw.rect(screen, 'white', (self.text_rect.x, self.text_rect.y) + self.text_rect.size)
-        self.surface.blit(self.text, (self.text_rect.x, self.text_rect.y))
+    def draw(self, however=False):
+        color = (100, 0, 0) if however else (0, 100, 0)
+        self.text_obj = self.font.render(self.text, True, self.color, color)
+        pygame.draw.rect(screen, color, (self.text_rect.x, self.text_rect.y) + self.text_rect.size)
+        self.surface.blit(self.text_obj, (self.text_rect.x, self.text_rect.y))
 
     def on_button_down(self, position):
         if self.text_rect.collidepoint(position):
@@ -46,12 +117,16 @@ class button:
     def get_size(self):
         return self.text_rect.size
 
+    def get_mode(self):
+        return self.modes[self.mode]
+
 
 class desk:
-    def __init__(self, surface, size, indent, *players):
+    def __init__(self, surface, size, ind, *players):
+        self.win = False
         # screen settings
         self.surface = surface
-        self.indent = indent
+        self.indent = ind
         self.screen_size = size
         # player settings
         # order
@@ -102,8 +177,8 @@ class desk:
 
     # noinspection PyTypeChecker
     def set_fig(self, position):
-        pos = [min(max(i, self.indent), self.screen_size - self.indent)for i in position]
-        pos = [(int(i // ((self.screen_size - 2 * self.indent) / 9))) for i in pos]
+        pos = [min(max(coord, self.indent), self.screen_size - self.indent) for coord in position]
+        pos = [(int(coord // ((self.screen_size - 2 * self.indent) / 9))) for coord in pos]
         pos = [max(p, 1) for p in pos]
 
         pos_ = int(9 * (pos[1] - 1) + pos[0] - 1)
@@ -112,7 +187,6 @@ class desk:
                 and (new_pos[0] != self.cur_field and new_pos[0] is not None)):
             return
         if new_pos[0] == self.cur_field or self.cur_field is None:
-            print('changed')
             self.draw_fig(True, pos)
             self.fields[new_pos[0]][new_pos[1]] = self.cur_player
             self.cur_field = new_pos
@@ -121,15 +195,15 @@ class desk:
             self.change_cur_field(new_pos)
 
     def change_cur_field(self, position):
-        for i in range(9):
-            if self.field[i] is None:
-                self.draw_small_field((100, 100, 100), i)
+        for field in range(9):
+            if self.field[field] is None:
+                self.draw_small_field((100, 100, 100), field)
         if ((self.field[position[0]] is not None) or (None not in self.fields[position[0]])
                 or (self.field[position[1]] is not None)):
             self.cur_field = None
-            for i in range(9):
-                if self.field[i] is None:
-                    self.draw_small_field('yellow', i)
+            for field in range(9):
+                if self.field[field] is None:
+                    self.draw_small_field('yellow', field)
         else:
             self.cur_field = position[1]
             self.draw_small_field('yellow', self.cur_field)
@@ -140,7 +214,7 @@ class desk:
         self.draw_fig(False, pos)
         self.field[new_pos] = self.cur_player
         if self.check_grid(self.field):
-            print('win')
+            self.win = True
 
     def draw_fig(self, little=True, position=(0, 0), width=2):
         if little:
@@ -160,11 +234,11 @@ class desk:
             xy3 = [xy2[0], xy1[1]]
             xy4 = [xy1[0], xy2[1]]
 
-            pos = [i - self.indent / 9 for i in xy2]
+            pos = [coord - self.indent / 9 for coord in xy2]
             size = [abs(xy2[0] - xy1[0]) + self.indent / 4] * 2
             self.surface.fill((0, 0, 0, 50), pos + size)
 
-        centre = [(xy1[i] + xy2[i]) / 2 for i in range(2)]
+        centre = [(xy1[coord] + xy2[coord]) / 2 for coord in range(2)]
         radius = abs(xy2[0] - xy1[0]) / 2
 
         if self.get_current() == 'cross':
@@ -178,8 +252,8 @@ class desk:
         for line in self.check:
             tri = True
             # получааем индексы из рядов
-            for i in line:
-                if field[i] != self.get_current():
+            for symbol in line:
+                if field[symbol] != self.get_current():
                     tri = False
             if tri:
                 return True
@@ -286,8 +360,15 @@ class desk:
 
     def draw(self, color='grey', sub_color=(100, 100, 100)):
         self.draw_big_field(color)
-        for i in range(9):
-            self.draw_small_field(sub_color, i)
+        for grid in range(9):
+            self.draw_small_field(sub_color, grid)
+
+
+def set_screen(screens_, mode):
+    global condition
+    screen.fill((0, 0, 0))
+    screens_[mode].draw()
+    condition = mode
 
 
 if __name__ == '__main__':
@@ -300,36 +381,54 @@ if __name__ == '__main__':
     layer = pygame.Surface((screen_size, screen_size), pygame.SRCALPHA)
 
     player = "Потом"
-    buttons = [button(screen, True, text='Зарегистрироваться'),
-               button(screen, True, text='Начать игру'),
+
+    buttons = [button(screen, True, text='Зарегистрироваться', mode=1),
+               button(screen, True, text='Начать игру', mode=2),
                ]
 
-    Desk = desk(layer, screen_size, indent,  player)
-    Menu = menu(screen, 100, screen_size, indent, buttons)
+    blanks = [texter(screen, 'Введите имя', True, indent, 'yellow'),
+              texter(screen, 'Введите пароль',  True, indent, 'yellow')]
 
-    condition = 'game'
+    Desk = desk(layer, screen_size, indent, player)
+    Menu = menu(screen, screen_size, indent, buttons)
+    Reg = register(screen, screen_size, indent, blanks)
+
+    screens = [Menu, Reg, Desk]
+
+    condition = 0
 
     done = False
-    Desk.draw('grey', (100, 100, 100))
-    #Menu.draw()
-
-
+    set_screen(screens, condition)
 
     while not done:
         pygame.time.Clock().tick(30)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 done = True
-            if condition == 'game':
+            if condition == 2:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     Desk.set_fig(pygame.mouse.get_pos())
-            elif condition == 'menu':
+            elif condition == 0:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     for i in Menu.buttons:
                         if i.on_button_down(event.pos):
-                            print('a')
+                            set_screen(screens, i.mode)
+                if event.type == pygame.MOUSEMOTION:
+                    for i in Menu.buttons:
+                        if i.on_button_down(event.pos):
+                            i.draw(True)
+                        else:
+                            i.draw(False)
+            elif condition == 1:
+                if event.type == pygame.KEYDOWN:
+                    for i in Reg.blanks:
+                        i.input_text(event)
+                        i.draw()
 
-
-
+        if Desk.win:
+            layer.fill((0, 0, 0, 0))
+            Menu = menu(screen, screen_size, indent, buttons)
+            set_screen(screens, 0)
+            Desk = desk(layer, screen_size, indent, player)
         screen.blit(layer, (0, 0))
         pygame.display.flip()
